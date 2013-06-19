@@ -15,7 +15,7 @@
                 "common_grams":{
                     "type":"common_grams",
                     "query_mode" : true,
-                    "words":[
+                    "common_words":[
                         "brown",
                         "fox"
                     ]
@@ -23,7 +23,7 @@
                 "common_grams_file":{
                     "type":"common_grams",
                     "query_mode" : true,
-                    "words_path":"org/elasticsearch/test/unit/index/analysis/commongrams/words.txt"
+                    "common_words_path":"org/elasticsearch/test/unit/index/analysis/commongrams/common_words.txt"
                 }
             }
         }

@@ -159,7 +159,7 @@ public class Analysis {
     }
 
     public static CharArraySet parseCommonWords(Environment env, Settings settings, CharArraySet defaultCommonWords, Version version, boolean ignoreCase) {
-        return parseWords(env, settings, "words", defaultCommonWords, namedStopWords, version, ignoreCase);
+        return parseWords(env, settings, "common_words", defaultCommonWords, namedStopWords, version, ignoreCase);
     }
 
     public static CharArraySet parseArticles(Environment env, Settings settings, Version version) {
@@ -187,10 +187,6 @@ public class Analysis {
             }
         }
         return setWords;
-    }
-
-    private static CharArraySet resolveNamedWords(String[] words, ImmutableMap<String, Set<?>> namedWords, Version version, boolean ignoreCase) {
-        return resolveNamedWords(Arrays.asList(words), namedWords, version, ignoreCase);
     }
 
     public static CharArraySet getWordSet(Environment env, Settings settings, String settingsPrefix, Version version) {

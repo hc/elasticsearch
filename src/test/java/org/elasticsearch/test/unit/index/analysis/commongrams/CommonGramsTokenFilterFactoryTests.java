@@ -17,7 +17,7 @@
  * under the License.
  */
 
-package org.elasticsearch.test.unit.index.analysis;
+package org.elasticsearch.test.unit.index.analysis.commongrams;
 
 import java.io.IOException;
 import java.io.StringReader;
@@ -26,31 +26,44 @@ import org.apache.lucene.analysis.Analyzer;
 import org.apache.lucene.analysis.Tokenizer;
 import org.apache.lucene.analysis.core.WhitespaceTokenizer;
 import org.apache.lucene.util.Version;
+import org.elasticsearch.ElasticSearchIllegalArgumentException;
 import org.elasticsearch.common.settings.ImmutableSettings;
 import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.index.analysis.AnalysisService;
 import org.elasticsearch.index.analysis.TokenFilterFactory;
+import org.elasticsearch.test.unit.index.analysis.AnalysisTestsHelper;
 import org.testng.annotations.Test;
+import org.testng.Assert;
+
+import static org.hamcrest.MatcherAssert.assertThat;
+import static org.hamcrest.Matchers.instanceOf;
 
 public class CommonGramsTokenFilterFactoryTests {
 
     @Test
     public void testDefault() throws IOException {
+        Settings settings = ImmutableSettings.settingsBuilder().put("index.analysis.filter.common_grams_default.type", "common_grams").build();
+
+        try {
+            AnalysisTestsHelper.createAnalysisServiceFromSettings(settings);
+            Assert.fail("[common_words] or [common_words_path] is set");
+        } catch (Exception e) {
+            assertThat(e.getCause(), instanceOf(ElasticSearchIllegalArgumentException.class));
+        }
+    }
+    @Test
+    public void testWithoutCommonWordsMatch() throws IOException {
         {
-            Settings settings = ImmutableSettings.settingsBuilder().put("index.analysis.filter.common_grams_default.type", "common_grams").build();
+            Settings settings = ImmutableSettings.settingsBuilder().put("index.analysis.filter.common_grams_default.type", "common_grams")
+                     .putArray("index.analysis.filter.common_grams_default.common_words", "chromosome", "protein")
+                     .build();
+
             AnalysisService analysisService = AnalysisTestsHelper.createAnalysisServiceFromSettings(settings);
             {
                 TokenFilterFactory tokenFilter = analysisService.tokenFilter("common_grams_default");
                 String source = "the quick brown is a fox Or noT";
                 String[] expected = new String[] { "the", "quick", "brown", "is", "a", "fox", "Or", "noT" };
-                Tokenizer tokenizer = new WhitespaceTokenizer(Version.LUCENE_CURRENT, new StringReader(source));
-                AnalysisTestsHelper.assertSimpleTSOutput(tokenFilter.create(tokenizer), expected);
-            }
-            {
-                TokenFilterFactory tokenFilter = analysisService.tokenFilter("common_grams");
-                String source = "the quick brown is a fox Or noT";
-                String[] expected = new String[] { "the", "quick", "brown", "is", "a", "fox", "Or", "noT" };
-                Tokenizer tokenizer = new WhitespaceTokenizer(Version.LUCENE_CURRENT, new StringReader(source));
+                Tokenizer tokenizer = new WhitespaceTokenizer(Version.LUCENE_43, new StringReader(source));
                 AnalysisTestsHelper.assertSimpleTSOutput(tokenFilter.create(tokenizer), expected);
             }
         }
@@ -58,13 +71,14 @@ public class CommonGramsTokenFilterFactoryTests {
         {
             Settings settings = ImmutableSettings.settingsBuilder().put("index.analysis.filter.common_grams_default.type", "common_grams")
                      .put("index.analysis.filter.common_grams_default.query_mode", false)
+                     .putArray("index.analysis.filter.common_grams_default.common_words", "chromosome", "protein")
                      .build();
             AnalysisService analysisService = AnalysisTestsHelper.createAnalysisServiceFromSettings(settings);
             {
                 TokenFilterFactory tokenFilter = analysisService.tokenFilter("common_grams_default");
                 String source = "the quick brown is a fox Or noT";
                 String[] expected = new String[] { "the", "quick", "brown", "is", "a", "fox", "Or", "noT" };
-                Tokenizer tokenizer = new WhitespaceTokenizer(Version.LUCENE_CURRENT, new StringReader(source));
+                Tokenizer tokenizer = new WhitespaceTokenizer(Version.LUCENE_43, new StringReader(source));
                 AnalysisTestsHelper.assertSimpleTSOutput(tokenFilter.create(tokenizer), expected);
             }
         }
@@ -75,45 +89,43 @@ public class CommonGramsTokenFilterFactoryTests {
         {
             Settings settings = ImmutableSettings.settingsBuilder().put("index.analysis.filter.common_grams_1.type", "common_grams")
                     .put("index.analysis.filter.common_grams_1.ignore_case", true)
-                    .putArray("index.analysis.filter.common_grams_1.words", "the", "Or", "Not", "a", "is", "an", "they", "are")
+                    .putArray("index.analysis.filter.common_grams_1.common_words", "the", "Or", "Not", "a", "is", "an", "they", "are")
                     .build();
             AnalysisService analysisService = AnalysisTestsHelper.createAnalysisServiceFromSettings(settings);
             TokenFilterFactory tokenFilter = analysisService.tokenFilter("common_grams_1");
             String source = "the quick brown is a fox or noT";
             String[] expected = new String[] { "the", "the_quick", "quick", "brown", "brown_is", "is", "is_a", "a", "a_fox", "fox", "fox_or", "or", "or_noT", "noT" };
-            Tokenizer tokenizer = new WhitespaceTokenizer(Version.LUCENE_CURRENT, new StringReader(source));
+            Tokenizer tokenizer = new WhitespaceTokenizer(Version.LUCENE_43, new StringReader(source));
             AnalysisTestsHelper.assertSimpleTSOutput(tokenFilter.create(tokenizer), expected);
         }
         {
             Settings settings = ImmutableSettings.settingsBuilder().put("index.analysis.filter.common_grams_2.type", "common_grams")
                     .put("index.analysis.filter.common_grams_2.ignore_case", false)
-                    .putArray("index.analysis.filter.common_grams_2.words", "the", "Or", "noT", "a", "is", "an", "they", "are")
+                    .putArray("index.analysis.filter.common_grams_2.common_words", "the", "Or", "noT", "a", "is", "an", "they", "are")
                     .build();
             AnalysisService analysisService = AnalysisTestsHelper.createAnalysisServiceFromSettings(settings);
             TokenFilterFactory tokenFilter = analysisService.tokenFilter("common_grams_2");
             String source = "the quick brown is a fox or why noT";
             String[] expected = new String[] { "the", "the_quick", "quick", "brown", "brown_is", "is", "is_a", "a", "a_fox", "fox", "or", "why", "why_noT", "noT" };
-            Tokenizer tokenizer = new WhitespaceTokenizer(Version.LUCENE_CURRENT, new StringReader(source));
+            Tokenizer tokenizer = new WhitespaceTokenizer(Version.LUCENE_43, new StringReader(source));
             AnalysisTestsHelper.assertSimpleTSOutput(tokenFilter.create(tokenizer), expected);
         }
         {
             Settings settings = ImmutableSettings.settingsBuilder().put("index.analysis.filter.common_grams_3.type", "common_grams")
-                    .putArray("index.analysis.filter.common_grams_3.words", "the", "or", "not", "a", "is", "an", "they", "are")
+                    .putArray("index.analysis.filter.common_grams_3.common_words", "the", "or", "not", "a", "is", "an", "they", "are")
                     .build();
             AnalysisService analysisService = AnalysisTestsHelper.createAnalysisServiceFromSettings(settings);
             TokenFilterFactory tokenFilter = analysisService.tokenFilter("common_grams_3");
             String source = "the quick brown is a fox Or noT";
             String[] expected = new String[] { "the", "the_quick", "quick", "brown", "brown_is", "is", "is_a", "a", "a_fox", "fox", "Or", "noT" };
-            Tokenizer tokenizer = new WhitespaceTokenizer(Version.LUCENE_CURRENT, new StringReader(source));
+            Tokenizer tokenizer = new WhitespaceTokenizer(Version.LUCENE_43, new StringReader(source));
             AnalysisTestsHelper.assertSimpleTSOutput(tokenFilter.create(tokenizer), expected);
         }
     }
 
     @Test
     public void testCommonGramsAnalysis() throws IOException {
-
         Settings settings = ImmutableSettings.settingsBuilder().loadFromClasspath("org/elasticsearch/test/unit/index/analysis/commongrams/commongrams.json").build();
-
         {
             AnalysisService analysisService = AnalysisTestsHelper.createAnalysisServiceFromSettings(settings);
             Analyzer analyzer = analysisService.analyzer("commongramsAnalyzer").analyzer();
@@ -121,7 +133,6 @@ public class CommonGramsTokenFilterFactoryTests {
             String[] expected = new String[] { "the", "quick", "quick_brown", "brown", "brown_is", "is", "a", "a_fox", "fox", "fox_or", "or", "not" };
             AnalysisTestsHelper.assertSimpleTSOutput(analyzer.tokenStream("test", new StringReader(source)), expected);
         }
-
         {
             AnalysisService analysisService = AnalysisTestsHelper.createAnalysisServiceFromSettings(settings);
             Analyzer analyzer = analysisService.analyzer("commongramsAnalyzer_file").analyzer();
@@ -132,79 +143,62 @@ public class CommonGramsTokenFilterFactoryTests {
     }
 
     @Test
-    public void testQueryMode() throws IOException {
-        Settings settings = ImmutableSettings.settingsBuilder().put("index.analysis.filter.common_grams_default.type", "common_grams")
-                 .put("index.analysis.filter.common_grams_default.query_mode", true)
-                 .build();
-        AnalysisService analysisService = AnalysisTestsHelper.createAnalysisServiceFromSettings(settings);
-        {
-            TokenFilterFactory tokenFilter = analysisService.tokenFilter("common_grams_default");
-            String source = "the quick brown is a fox Or noT";
-            String[] expected = new String[] { "the", "quick", "brown", "is", "a", "fox", "Or", "noT" };
-            Tokenizer tokenizer = new WhitespaceTokenizer(Version.LUCENE_CURRENT, new StringReader(source));
-            AnalysisTestsHelper.assertSimpleTSOutput(tokenFilter.create(tokenizer), expected);
-        }
-    }
-
-    @Test
     public void testQueryModeSettings() throws IOException {
         {
             Settings settings = ImmutableSettings.settingsBuilder().put("index.analysis.filter.common_grams_1.type", "common_grams")
                     .put("index.analysis.filter.common_grams_1.query_mode", true)
-                    .putArray("index.analysis.filter.common_grams_1.words", "the", "Or", "Not", "a", "is", "an", "they", "are")
+                    .putArray("index.analysis.filter.common_grams_1.common_words", "the", "Or", "Not", "a", "is", "an", "they", "are")
                     .put("index.analysis.filter.common_grams_1.ignore_case", true)
                     .build();
             AnalysisService analysisService = AnalysisTestsHelper.createAnalysisServiceFromSettings(settings);
             TokenFilterFactory tokenFilter = analysisService.tokenFilter("common_grams_1");
             String source = "the quick brown is a fox or noT";
             String[] expected = new String[] { "the_quick", "quick", "brown_is", "is_a", "a_fox", "fox_or", "or_noT" };
-            Tokenizer tokenizer = new WhitespaceTokenizer(Version.LUCENE_CURRENT, new StringReader(source));
+            Tokenizer tokenizer = new WhitespaceTokenizer(Version.LUCENE_43, new StringReader(source));
             AnalysisTestsHelper.assertSimpleTSOutput(tokenFilter.create(tokenizer), expected);
         }
         {
             Settings settings = ImmutableSettings.settingsBuilder().put("index.analysis.filter.common_grams_2.type", "common_grams")
                     .put("index.analysis.filter.common_grams_2.query_mode", true)
-                    .putArray("index.analysis.filter.common_grams_2.words", "the", "Or", "noT", "a", "is", "an", "they", "are")
+                    .putArray("index.analysis.filter.common_grams_2.common_words", "the", "Or", "noT", "a", "is", "an", "they", "are")
                     .put("index.analysis.filter.common_grams_2.ignore_case", false)
                     .build();
             AnalysisService analysisService = AnalysisTestsHelper.createAnalysisServiceFromSettings(settings);
             TokenFilterFactory tokenFilter = analysisService.tokenFilter("common_grams_2");
             String source = "the quick brown is a fox or why noT";
             String[] expected = new String[] { "the_quick", "quick", "brown_is", "is_a", "a_fox", "fox", "or", "why_noT" };
-            Tokenizer tokenizer = new WhitespaceTokenizer(Version.LUCENE_CURRENT, new StringReader(source));
+            Tokenizer tokenizer = new WhitespaceTokenizer(Version.LUCENE_43, new StringReader(source));
             AnalysisTestsHelper.assertSimpleTSOutput(tokenFilter.create(tokenizer), expected);
         }
         {
             Settings settings = ImmutableSettings.settingsBuilder().put("index.analysis.filter.common_grams_3.type", "common_grams")
                     .put("index.analysis.filter.common_grams_3.query_mode", true)
-                    .putArray("index.analysis.filter.common_grams_3.words", "the", "Or", "noT", "a", "is", "an", "they", "are")
+                    .putArray("index.analysis.filter.common_grams_3.common_words", "the", "Or", "noT", "a", "is", "an", "they", "are")
                     .build();
             AnalysisService analysisService = AnalysisTestsHelper.createAnalysisServiceFromSettings(settings);
             TokenFilterFactory tokenFilter = analysisService.tokenFilter("common_grams_3");
             String source = "the quick brown is a fox or why noT";
             String[] expected = new String[] { "the_quick", "quick", "brown_is", "is_a", "a_fox", "fox", "or", "why_noT" };
-            Tokenizer tokenizer = new WhitespaceTokenizer(Version.LUCENE_CURRENT, new StringReader(source));
+            Tokenizer tokenizer = new WhitespaceTokenizer(Version.LUCENE_43, new StringReader(source));
             AnalysisTestsHelper.assertSimpleTSOutput(tokenFilter.create(tokenizer), expected);
         }
         {
             Settings settings = ImmutableSettings.settingsBuilder().put("index.analysis.filter.common_grams_4.type", "common_grams")
                     .put("index.analysis.filter.common_grams_4.query_mode", true)
-                    .putArray("index.analysis.filter.common_grams_4.words", "the", "or", "not", "a", "is", "an", "they", "are")
+                    .putArray("index.analysis.filter.common_grams_4.common_words", "the", "or", "not", "a", "is", "an", "they", "are")
                     .build();
             AnalysisService analysisService = AnalysisTestsHelper.createAnalysisServiceFromSettings(settings);
             TokenFilterFactory tokenFilter = analysisService.tokenFilter("common_grams_4");
             String source = "the quick brown is a fox Or noT";
             String[] expected = new String[] { "the_quick", "quick", "brown_is", "is_a", "a_fox", "fox", "Or", "noT" };
-            Tokenizer tokenizer = new WhitespaceTokenizer(Version.LUCENE_CURRENT, new StringReader(source));
+            Tokenizer tokenizer = new WhitespaceTokenizer(Version.LUCENE_43, new StringReader(source));
             AnalysisTestsHelper.assertSimpleTSOutput(tokenFilter.create(tokenizer), expected);
         }
     }
 
     @Test
     public void testQueryModeCommonGramsAnalysis() throws IOException {
-
         Settings settings = ImmutableSettings.settingsBuilder().loadFromClasspath("org/elasticsearch/test/unit/index/analysis/commongrams/commongrams_query_mode.json").build();
-
         {
             AnalysisService analysisService = AnalysisTestsHelper.createAnalysisServiceFromSettings(settings);
             Analyzer analyzer = analysisService.analyzer("commongramsAnalyzer").analyzer();
@@ -212,7 +206,6 @@ public class CommonGramsTokenFilterFactoryTests {
             String[] expected = new String[] { "the", "quick_brown", "brown_is", "is", "a_fox", "fox_or", "or", "not" };
             AnalysisTestsHelper.assertSimpleTSOutput(analyzer.tokenStream("test", new StringReader(source)), expected);
         }
-
         {
             AnalysisService analysisService = AnalysisTestsHelper.createAnalysisServiceFromSettings(settings);
             Analyzer analyzer = analysisService.analyzer("commongramsAnalyzer_file").analyzer();

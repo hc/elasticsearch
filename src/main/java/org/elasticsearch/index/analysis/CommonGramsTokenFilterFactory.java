@@ -29,10 +29,12 @@ import org.elasticsearch.common.settings.Settings;
 import org.elasticsearch.env.Environment;
 import org.elasticsearch.index.Index;
 import org.elasticsearch.index.settings.IndexSettings;
+import org.elasticsearch.ElasticSearchIllegalArgumentException;
 
 /**
  *
  */
+@AnalysisSettingsRequired
 public class CommonGramsTokenFilterFactory extends AbstractTokenFilterFactory {
 
     private final CharArraySet words;
@@ -46,7 +48,11 @@ public class CommonGramsTokenFilterFactory extends AbstractTokenFilterFactory {
         super(index, indexSettings, name, settings);
         this.ignoreCase = settings.getAsBoolean("ignore_case", false);
         this.queryMode = settings.getAsBoolean("query_mode", false);
-        this.words = Analysis.parseCommonWords(env, settings, CharArraySet.EMPTY_SET, version, ignoreCase);
+        this.words = Analysis.parseCommonWords(env, settings, null, version, ignoreCase);
+
+        if (this.words == null) {
+            throw new ElasticSearchIllegalArgumentException("mising or empty [common_words] or [common_words_path] configuration for common_grams token filter");
+        }
     }
 
     @Override
